@@ -11,6 +11,7 @@
             color: #fff;
             text-align: center;
             padding: 20px;
+            margin: 0;
             position: relative;
             min-height: 100vh;
         }
@@ -19,22 +20,32 @@
         }
         .container {
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            max-width: 1200px;
             margin: 0 auto;
-            max-width: 600px;
         }
-        .audio-container, .video-container {
-            width: 100%;
+        .media-container {
+            width: 45%;
             margin-bottom: 20px;
+            background-color: #222;
+            padding: 10px;
+            border-radius: 10px;
         }
-        input[type="file"] {
-            margin: 10px 0;
+        .media-container h2 {
+            margin-top: 0;
         }
         audio, video {
             margin-top: 10px;
             border: 2px solid #fff;
             border-radius: 10px;
+            width: 100%;
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            display: block;
             width: 100%;
         }
         .playlist {
@@ -75,13 +86,6 @@
             padding: 5px;
             cursor: pointer;
         }
-        .footer {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            font-size: 14px;
-            color: #ccc;
-        }
         .play-all-button {
             background-color: blue;
             color: white;
@@ -96,13 +100,23 @@
             font-weight: bold;
             color: white;
         }
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #000;
+            color: #ccc;
+            text-align: center;
+            padding: 10px;
+            border-top: 1px solid #444;
+        }
     </style>
 </head>
 <body>
     <h1>Reprodutor de Áudio e Vídeo com Playlist</h1>
     
     <div class="container">
-        <div class="audio-container">
+        <div class="media-container">
             <h2>Áudio</h2>
             <audio id="audioPlayer" controls></audio>
             <input type="file" id="audioFiles" accept="audio/*" multiple>
@@ -111,7 +125,7 @@
             <button class="play-all-button" onclick="playAll('audio')">Reproduzir Todos</button>
         </div>
         
-        <div class="video-container">
+        <div class="media-container">
             <h2>Vídeo</h2>
             <video id="videoPlayer" controls></video>
             <input type="file" id="videoFiles" accept="video/*" multiple>
@@ -158,18 +172,14 @@
         audioPlayer.addEventListener('ended', function() {
             currentAudioIndex++;
             if (currentAudioIndex < audioPlaylist.length) {
-                audioPlayer.src = URL.createObjectURL(audioPlaylist[currentAudioIndex]);
-                audioPlayer.play();
-                highlightCurrent('audio');
+                smoothTransition('audio');
             }
         });
 
         videoPlayer.addEventListener('ended', function() {
             currentVideoIndex++;
             if (currentVideoIndex < videoPlaylist.length) {
-                videoPlayer.src = URL.createObjectURL(videoPlaylist[currentVideoIndex]);
-                videoPlayer.play();
-                highlightCurrent('video');
+                smoothTransition('video');
             }
         });
 
@@ -189,14 +199,10 @@
                 playButton.addEventListener('click', () => {
                     if (type === 'audio') {
                         currentAudioIndex = index;
-                        audioPlayer.src = URL.createObjectURL(file);
-                        audioPlayer.play();
-                        highlightCurrent('audio');
+                        smoothTransition('audio');
                     } else {
                         currentVideoIndex = index;
-                        videoPlayer.src = URL.createObjectURL(file);
-                        videoPlayer.play();
-                        highlightCurrent('video');
+                        smoothTransition('video');
                     }
                 });
 
@@ -206,23 +212,6 @@
                 removeButton.addEventListener('click', () => {
                     playlist.splice(index, 1);
                     updatePlaylist(playlist, container, type);
-                    if (type === 'audio' && currentAudioIndex === index) {
-                        if (playlist.length > 0) {
-                            currentAudioIndex = 0;
-                            audioPlayer.src = URL.createObjectURL(playlist[currentAudioIndex]);
-                            audioPlayer.play();
-                        } else {
-                            audioPlayer.src = '';
-                        }
-                    } else if (type === 'video' && currentVideoIndex === index) {
-                        if (playlist.length > 0) {
-                            currentVideoIndex = 0;
-                            videoPlayer.src = URL.createObjectURL(playlist[currentVideoIndex]);
-                            videoPlayer.play();
-                        } else {
-                            videoPlayer.src = '';
-                        }
-                    }
                 });
 
                 controlButtons.appendChild(playButton);
@@ -235,14 +224,10 @@
         function playAll(type) {
             if (type === 'audio' && audioPlaylist.length > 0) {
                 currentAudioIndex = 0;
-                audioPlayer.src = URL.createObjectURL(audioPlaylist[currentAudioIndex]);
-                audioPlayer.play();
-                highlightCurrent('audio');
+                smoothTransition('audio');
             } else if (type === 'video' && videoPlaylist.length > 0) {
                 currentVideoIndex = 0;
-                videoPlayer.src = URL.createObjectURL(videoPlaylist[currentVideoIndex]);
-                videoPlayer.play();
-                highlightCurrent('video');
+                smoothTransition('video');
             }
         }
 
@@ -258,6 +243,38 @@
                 items[currentVideoIndex].classList.add('active');
                 nowPlayingVideo.textContent = `Tocando agora: ${videoPlaylist[currentVideoIndex].name}`;
             }
+        }
+
+        function smoothTransition(type) {
+            const player = type === 'audio' ? audioPlayer : videoPlayer;
+            player.style.opacity = 0;
+            
+            setTimeout(() => {
+                if (type === 'audio') {
+                    player.src = URL.createObjectURL(audioPlaylist[currentAudioIndex]);
+                    player.volume = 0;  // Inicia o volume no zero
+                    player.play();
+                    fadeInAudio(player); // Faz o fade in no volume
+                    highlightCurrent('audio');
+                } else {
+                    player.src = URL.createObjectURL(videoPlaylist[currentVideoIndex]);
+                    player.play();
+                    highlightCurrent('video');
+                }
+                player.style.opacity = 1;
+            }, 1000);
+        }
+
+        function fadeInAudio(player) {
+            let volume = 0;
+            const interval = setInterval(() => {
+                if (volume < 1) {
+                    volume += 0.2; // Aumenta o volume gradualmente
+                    player.volume = volume;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 200); // A cada 200ms
         }
     </script>
 </body>
