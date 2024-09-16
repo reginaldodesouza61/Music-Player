@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reprodutor de Áudio e Vídeo</title>
+    <title>Reprodutor de Áudio e Vídeo com Playlist</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -37,6 +37,44 @@
             border-radius: 10px;
             width: 100%;
         }
+        .playlist {
+            margin-top: 20px;
+            text-align: left;
+            width: 100%;
+        }
+        .playlist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #fff;
+        }
+        .playlist-item.active {
+            background-color: #444;
+            font-weight: bold;
+            color: yellow;
+        }
+        .playlist-item:hover {
+            background-color: #333;
+        }
+        .control-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .control-button {
+            background-color: green;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .remove-button {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+        }
         .footer {
             position: absolute;
             bottom: 10px;
@@ -44,22 +82,42 @@
             font-size: 14px;
             color: #ccc;
         }
+        .play-all-button {
+            background-color: blue;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .now-playing {
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
     </style>
 </head>
 <body>
-    <h1>Reprodutor de Áudio e Vídeo</h1>
+    <h1>Reprodutor de Áudio e Vídeo com Playlist</h1>
     
     <div class="container">
         <div class="audio-container">
             <h2>Áudio</h2>
             <audio id="audioPlayer" controls></audio>
-            <input type="file" id="audioFile" accept="audio/*">
+            <input type="file" id="audioFiles" accept="audio/*" multiple>
+            <div class="now-playing" id="nowPlayingAudio"></div>
+            <div class="playlist" id="audioPlaylist"></div>
+            <button class="play-all-button" onclick="playAll('audio')">Reproduzir Todos</button>
         </div>
         
         <div class="video-container">
             <h2>Vídeo</h2>
             <video id="videoPlayer" controls></video>
-            <input type="file" id="videoFile" accept="video/*">
+            <input type="file" id="videoFiles" accept="video/*" multiple>
+            <div class="now-playing" id="nowPlayingVideo"></div>
+            <div class="playlist" id="videoPlaylist"></div>
+            <button class="play-all-button" onclick="playAll('video')">Reproduzir Todos</button>
         </div>
     </div>
 
@@ -68,19 +126,139 @@
     </div>
 
     <script>
-        document.getElementById('audioFile').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const audioPlayer = document.getElementById('audioPlayer');
-            const fileURL = URL.createObjectURL(file);
-            audioPlayer.src = fileURL;
+        const audioPlayer = document.getElementById('audioPlayer');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const audioPlaylistContainer = document.getElementById('audioPlaylist');
+        const videoPlaylistContainer = document.getElementById('videoPlaylist');
+        const nowPlayingAudio = document.getElementById('nowPlayingAudio');
+        const nowPlayingVideo = document.getElementById('nowPlayingVideo');
+        let audioPlaylist = [];
+        let videoPlaylist = [];
+        let currentAudioIndex = 0;
+        let currentVideoIndex = 0;
+
+        document.getElementById('audioFiles').addEventListener('change', function(event) {
+            audioPlaylist = Array.from(event.target.files);
+            currentAudioIndex = 0;
+            updatePlaylist(audioPlaylist, audioPlaylistContainer, 'audio');
+            if (audioPlaylist.length > 0) {
+                audioPlayer.src = URL.createObjectURL(audioPlaylist[currentAudioIndex]);
+            }
         });
 
-        document.getElementById('videoFile').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const videoPlayer = document.getElementById('videoPlayer');
-            const fileURL = URL.createObjectURL(file);
-            videoPlayer.src = fileURL;
+        document.getElementById('videoFiles').addEventListener('change', function(event) {
+            videoPlaylist = Array.from(event.target.files);
+            currentVideoIndex = 0;
+            updatePlaylist(videoPlaylist, videoPlaylistContainer, 'video');
+            if (videoPlaylist.length > 0) {
+                videoPlayer.src = URL.createObjectURL(videoPlaylist[currentVideoIndex]);
+            }
         });
+
+        audioPlayer.addEventListener('ended', function() {
+            currentAudioIndex++;
+            if (currentAudioIndex < audioPlaylist.length) {
+                audioPlayer.src = URL.createObjectURL(audioPlaylist[currentAudioIndex]);
+                audioPlayer.play();
+                highlightCurrent('audio');
+            }
+        });
+
+        videoPlayer.addEventListener('ended', function() {
+            currentVideoIndex++;
+            if (currentVideoIndex < videoPlaylist.length) {
+                videoPlayer.src = URL.createObjectURL(videoPlaylist[currentVideoIndex]);
+                videoPlayer.play();
+                highlightCurrent('video');
+            }
+        });
+
+        function updatePlaylist(playlist, container, type) {
+            container.innerHTML = '';
+            playlist.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'playlist-item';
+                item.textContent = file.name;
+
+                const controlButtons = document.createElement('div');
+                controlButtons.className = 'control-buttons';
+
+                const playButton = document.createElement('button');
+                playButton.className = 'control-button';
+                playButton.textContent = 'Play';
+                playButton.addEventListener('click', () => {
+                    if (type === 'audio') {
+                        currentAudioIndex = index;
+                        audioPlayer.src = URL.createObjectURL(file);
+                        audioPlayer.play();
+                        highlightCurrent('audio');
+                    } else {
+                        currentVideoIndex = index;
+                        videoPlayer.src = URL.createObjectURL(file);
+                        videoPlayer.play();
+                        highlightCurrent('video');
+                    }
+                });
+
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-button';
+                removeButton.textContent = 'Remover';
+                removeButton.addEventListener('click', () => {
+                    playlist.splice(index, 1);
+                    updatePlaylist(playlist, container, type);
+                    if (type === 'audio' && currentAudioIndex === index) {
+                        if (playlist.length > 0) {
+                            currentAudioIndex = 0;
+                            audioPlayer.src = URL.createObjectURL(playlist[currentAudioIndex]);
+                            audioPlayer.play();
+                        } else {
+                            audioPlayer.src = '';
+                        }
+                    } else if (type === 'video' && currentVideoIndex === index) {
+                        if (playlist.length > 0) {
+                            currentVideoIndex = 0;
+                            videoPlayer.src = URL.createObjectURL(playlist[currentVideoIndex]);
+                            videoPlayer.play();
+                        } else {
+                            videoPlayer.src = '';
+                        }
+                    }
+                });
+
+                controlButtons.appendChild(playButton);
+                controlButtons.appendChild(removeButton);
+                item.appendChild(controlButtons);
+                container.appendChild(item);
+            });
+        }
+
+        function playAll(type) {
+            if (type === 'audio' && audioPlaylist.length > 0) {
+                currentAudioIndex = 0;
+                audioPlayer.src = URL.createObjectURL(audioPlaylist[currentAudioIndex]);
+                audioPlayer.play();
+                highlightCurrent('audio');
+            } else if (type === 'video' && videoPlaylist.length > 0) {
+                currentVideoIndex = 0;
+                videoPlayer.src = URL.createObjectURL(videoPlaylist[currentVideoIndex]);
+                videoPlayer.play();
+                highlightCurrent('video');
+            }
+        }
+
+        function highlightCurrent(type) {
+            const items = type === 'audio' ? audioPlaylistContainer.children : videoPlaylistContainer.children;
+            for (let i = 0; i < items.length; i++) {
+                items[i].classList.remove('active');
+            }
+            if (type === 'audio') {
+                items[currentAudioIndex].classList.add('active');
+                nowPlayingAudio.textContent = `Tocando agora: ${audioPlaylist[currentAudioIndex].name}`;
+            } else {
+                items[currentVideoIndex].classList.add('active');
+                nowPlayingVideo.textContent = `Tocando agora: ${videoPlaylist[currentVideoIndex].name}`;
+            }
+        }
     </script>
 </body>
 </html>
